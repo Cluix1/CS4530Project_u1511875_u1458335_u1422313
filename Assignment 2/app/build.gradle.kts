@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.mvvmdemov2"
+    namespace = "com.example.activity"
     compileSdk {
         version = release(37)
     }
