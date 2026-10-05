@@ -2,6 +2,7 @@ package com.example.drawing_app
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -29,7 +30,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,16 +38,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.drawing_app.ui.theme.Drawing_AppTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.res.painterResource
-import com.example.drawing_app.R
 
 
 // Model
@@ -62,10 +58,10 @@ class Course(){
 class TodoViewModel : ViewModel()
 {
     //Model
-    private val tasks = MutableStateFlow(listOf<Course>())
-    val tasksReadOnly : StateFlow<List<Course>> = tasks
+    val tasks = MutableStateFlow(listOf<Course>())
+    // val tasksReadOnly : StateFlow<List<Course>> = tasks
 
-    var visible: MutableStateFlow<Boolean> = MutableStateFlow(true)
+    var visible = MutableStateFlow(true)
 
     // Methods to modify the Model
     fun addCourse (task: Course){
@@ -98,31 +94,36 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val myToast = Toast.makeText(this,"start", Toast.LENGTH_SHORT)
+        myToast.show()
         setContent {
-            Drawing_AppTheme{
-                val myVMObj: TodoViewModel = viewModel()
-                SScreen(myVMObj)
-                CourseList(myVMObj)
-            }
+            val myVMObj: TodoViewModel = viewModel()
+            SScreen(myVMObj)
+            CourseList(myVMObj)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val myToast = Toast.makeText(this,"res", Toast.LENGTH_SHORT)
+        myToast.show()
     }
 }
 
 //@SuppressLint("CoroutineCreationDuringComposition")
 @Composable
 fun SScreen(myVM: TodoViewModel){
-    val scope = rememberCoroutineScope()
-    AnimatedVisibility(myVM.visible.collectAsState().value, modifier = Modifier.fillMaxSize()) {
+    AnimatedVisibility(myVM.visible.collectAsState().value, Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = R.drawable.crossed),
             contentDescription = "Splash Screen PNG"
         )
     }
-//    scope.launch {
-//        myVM.closeScreen()
+//   val scope = rememberCoroutineScope()
+//   scope.launch {
+//        myVM.closeScreen() //active coroutine scoping, use in Button( onclick = { }
 //    }
-    LaunchedEffect(Unit) {myVM.closeScreen() }
-
+    LaunchedEffect(Unit) {myVM.closeScreen()} //passive coroutine scope
 }
 
 //View
@@ -134,7 +135,7 @@ fun CourseList(myVM: TodoViewModel) {
             verticalArrangement = Arrangement.Center) {
 
             //Observe my tasks
-            val observableTasks by myVM.tasksReadOnly.collectAsStateWithLifecycle()
+            val observableTasks = myVM.tasks.collectAsState().value
 
             var depText by remember { mutableStateOf("") }
             var numberText by remember { mutableStateOf("") }
@@ -175,7 +176,6 @@ fun CourseList(myVM: TodoViewModel) {
                 }) {
                     Text("Add Course")
                 }
-
             }
 
             Spacer(Modifier.height(20.dp))
