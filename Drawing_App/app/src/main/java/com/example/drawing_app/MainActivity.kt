@@ -25,6 +25,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,7 +108,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@SuppressLint("CoroutineCreationDuringComposition")
+//@SuppressLint("CoroutineCreationDuringComposition")
 @Composable
 fun SScreen(myVM: TodoViewModel){
     val scope = rememberCoroutineScope()
@@ -117,9 +118,11 @@ fun SScreen(myVM: TodoViewModel){
             contentDescription = "Splash Screen PNG"
         )
     }
-    scope.launch {
-        myVM.closeScreen()
-    }
+//    scope.launch {
+//        myVM.closeScreen()
+//    }
+    LaunchedEffect(Unit) {myVM.closeScreen() }
+
 }
 
 //View
