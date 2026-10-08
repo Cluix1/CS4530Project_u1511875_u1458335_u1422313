@@ -6,7 +6,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,14 +24,16 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel) {
     val brushSize = drawingViewModel.brushSize.collectAsState().value
     val lines = drawingViewModel.lines.collectAsState().value
 
-    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
         DrawingToolbar(
             selectedTool = selectedTool,
             selectedColor = selectedColor,
             brushSize = brushSize,
             onToolSelected = drawingViewModel::setTool,
             onColorSelected = drawingViewModel::setColor,
-            onBrushSizeChanged = drawingViewModel::setBrushSize
+            onBrushSizeChanged = drawingViewModel::setBrushSize,
+            canClear = lines.isNotEmpty(),
+            onClear = drawingViewModel::clear
         )
         HorizontalDivider()
         Canvas(

@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,13 +38,24 @@ fun DrawingToolbar(
     brushSize: Float,
     onToolSelected: (DrawingTool) -> Unit,
     onColorSelected: (Color) -> Unit,
-    onBrushSizeChanged: (Float) -> Unit
+    onBrushSizeChanged: (Float) -> Unit,
+    canClear: Boolean,
+    onClear: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("Tools", style = MaterialTheme.typography.labelLarge)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Tools", style = MaterialTheme.typography.labelLarge)
+            TextButton(onClick = onClear, enabled = canClear) {
+                Text("Clear")
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ToolButton("Pen", DrawingTool.PEN, selectedTool, onToolSelected)
             ToolButton("Brush", DrawingTool.BRUSH, selectedTool, onToolSelected)
