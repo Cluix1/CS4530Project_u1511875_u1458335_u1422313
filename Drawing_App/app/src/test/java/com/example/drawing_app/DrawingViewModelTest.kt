@@ -6,6 +6,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+// Tests tool/color selection, the maximum brush size, and clearing.
+// Drawing, buttons, splash, rotation, and layouts still need manual testing.
 class DrawingViewModelTest {
     @Test
     fun clear_removesDrawingAndKeepsPenSettings() {
