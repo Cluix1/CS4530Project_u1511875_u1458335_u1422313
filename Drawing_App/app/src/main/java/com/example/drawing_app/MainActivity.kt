@@ -1,86 +1,59 @@
 package com.example.drawing_app
 
-import android.annotation.SuppressLint
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.res.painterResource
 
+// toolbar , tests
 
-// Model
-class Course(){
-    var dept: String = "department";
-    var number: String = "0000"
-    var location: String = "loc"
-
-}
+// Model: one straight segment of a stroke
+data class Line(
+    val start: Offset,
+    val end: Offset,
+    val color: Color = Color.Black,
+    val strokeWidth: Dp = 4.dp
+)
 
 //viewModel
-class TodoViewModel : ViewModel()
+class DrawingViewModel : ViewModel()
 {
     //Model
-    val tasks = MutableStateFlow(listOf<Course>())
-    // val tasksReadOnly : StateFlow<List<Course>> = tasks
+    val lines = MutableStateFlow(listOf<Line>())
 
     var visible = MutableStateFlow(true)
 
     // Methods to modify the Model
-    fun addCourse (task: Course){
-        tasks.value += task
+    fun addLine(line: Line){
+        lines.value += line
     }
 
-    fun removeCourse(c: Course){
-        tasks.value -= c;
-    }
-
-    fun editCourse(old: Course, dept: String, number: String, location: String){
-        val updated = Course()
-        updated.dept = dept
-        updated.number = number
-        updated.location = location
-
-        val list = tasks.value.toMutableList()
-        list[list.indexOf(old)] = updated
-        tasks.value = list
+    fun clear(){
+        lines.value = emptyList()
     }
 
     suspend fun closeScreen(){
@@ -90,16 +63,15 @@ class TodoViewModel : ViewModel()
 }
 
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge() //allows you to see time, signal, bottom bar, etc
         val myToast = Toast.makeText(this,"start", Toast.LENGTH_SHORT)
         myToast.show()
         setContent {
-            val myVMObj: TodoViewModel = viewModel()
+            val myVMObj: DrawingViewModel = viewModel()
             SScreen(myVMObj)
-            CourseList(myVMObj)
+            DrawingCanvas(myVMObj)
         }
     }
 
@@ -110,102 +82,54 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-//@SuppressLint("CoroutineCreationDuringComposition")
 @Composable
-fun SScreen(myVM: TodoViewModel){
+fun SScreen(myVM: DrawingViewModel){
     AnimatedVisibility(myVM.visible.collectAsState().value, Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = R.drawable.crossed),
             contentDescription = "Splash Screen PNG"
         )
     }
-//   val scope = rememberCoroutineScope()
-//   scope.launch {
-//        myVM.closeScreen() //active coroutine scoping, use in Button( onclick = { }
-//    }
     LaunchedEffect(Unit) {myVM.closeScreen()} //passive coroutine scope
 }
 
 //View
 @Composable
-fun CourseList(myVM: TodoViewModel) {
+fun DrawingCanvas(myVM: DrawingViewModel) {
     AnimatedVisibility(!myVM.visible.collectAsState().value) {
-        Column(Modifier.fillMaxSize().statusBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center) {
+        //Observe my lines
+        val observableLines = myVM.lines.collectAsState().value
 
-            //Observe my tasks
-            val observableTasks = myVM.tasks.collectAsState().value
-
-            var depText by remember { mutableStateOf("") }
-            var numberText by remember { mutableStateOf("") }
-            var locText by remember { mutableStateOf("") }
-
-            Row {
-                OutlinedTextField(
-                    value = depText,
-                    onValueChange = { depText = it},
-                    label = { Text("Department") }
-                )
-            }
-            Row {
-                OutlinedTextField(
-                    value = numberText,
-                    onValueChange = { numberText = it},
-                    label = { Text("Class Number:") }
-                )
-            }
-            Row {
-                OutlinedTextField(
-                    value = locText,
-                    onValueChange = { locText = it},
-                    label = { Text("Location:") }
-                )
-            }
-            Row {
-                Button(onClick = {
-                    val newCourse = Course();
-                    newCourse.dept = depText;
-                    newCourse.number = numberText;
-                    newCourse.location = locText;
-                    myVM.addCourse(newCourse)
-                    depText=""
-                    locText=""
-                    numberText=""
-
-                }) {
-                    Text("Add Course")
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-            Text("Classes list:", fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, color = Color.Blue)
-            Row(Modifier.weight(1f).fillMaxWidth()) {
-                //display my list
-                LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)) {
-                    items(observableTasks){
-                        var showDetails by remember { mutableStateOf(false) }
-
-                        Row(Modifier.fillMaxWidth()
-                            .clickable { showDetails = !showDetails }
-                            .padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically) {
-
-                            Text(it.dept + it.number, fontSize = 18.sp, fontWeight = FontWeight.SemiBold) //printing concatenated title
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = { myVM.editCourse(it, depText, numberText, locText) }) {Text("Edit", fontSize = 16.sp)}
-                                Button(onClick = { myVM.removeCourse(it) }) {Text("Delete", fontSize = 16.sp)} //current object is 'it. ' like 'this. '
-                            }
-
+        Box(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .background(Color.White)
+        ) {
+            Canvas(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            // each drag event becomes a short segment from the previous point to the current one
+                            myVM.addLine(
+                                Line(
+                                    start = change.position - dragAmount,
+                                    end = change.position
+                                )
+                            )
                         }
-                        if (showDetails) {
-                            Text("Department: " + it.dept)
-                            Text("Number: " + it.number)
-                            Text("Location: " + it.location)
-                        }
-                        HorizontalDivider()
                     }
+            ) {
+                observableLines.forEach { line ->
+                    drawLine(
+                        color = line.color,
+                        start = line.start,
+                        end = line.end,
+                        strokeWidth = line.strokeWidth.toPx(),
+                        cap = StrokeCap.Round
+                    )
                 }
             }
         }
