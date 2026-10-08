@@ -75,7 +75,7 @@ fun DrawingToolbar(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Size: ${brushSize.toInt()} px", modifier = Modifier.width(84.dp))
+            Text("Size: ${brushSize.toInt()} dp", modifier = Modifier.width(84.dp))
             Slider(
                 value = brushSize,
                 onValueChange = onBrushSizeChanged,
@@ -84,12 +84,15 @@ fun DrawingToolbar(
             )
             Box(
                 modifier = Modifier.padding(start = 12.dp).size(40.dp)
-                    .background(selectedColor, CircleShape),
+                    .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
-                    modifier = Modifier.size(brushSize.coerceAtMost(32f).dp)
-                        .background(Color.White, CircleShape)
+                    modifier = Modifier.size(brushSize.dp)
+                        .background(
+                            selectedColor,
+                            if (selectedTool == DrawingTool.BRUSH) RoundedCornerShape(0.dp) else CircleShape
+                        )
                 )
             }
         }
