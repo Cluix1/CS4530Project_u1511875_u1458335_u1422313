@@ -4,76 +4,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Assert.assertNull
 import org.junit.Test
 
-// Tests pen settings, clearing, and saving/canceling strokes and shapes.
+// Tests pen settings, clearing, and keeping existing strokes unchanged.
 // Drawing, buttons, splash, rotation, and layouts still need manual testing.
 class DrawingViewModelTest {
     @Test
-    fun shape_isOnlySavedWhenDragFinishes() {
-        for (tool in listOf(DrawingTool.LINE, DrawingTool.RECTANGLE, DrawingTool.CIRCLE)) {
-            val viewModel = DrawingViewModel()
-            viewModel.setTool(tool)
-            viewModel.startStroke(Offset(30f, 30f))
-            viewModel.dragStroke(Offset(20f, 20f))
-            viewModel.dragStroke(Offset(10f, 10f))
-
-            assertTrue(viewModel.lines.value.isEmpty())
-            assertEquals(Offset(10f, 10f), viewModel.preview.value?.end)
-            viewModel.finishStroke()
-
-            assertEquals(1, viewModel.lines.value.size)
-            assertEquals(tool, viewModel.lines.value.first().tool)
-            assertEquals(Offset(30f, 30f), viewModel.lines.value.first().start)
-            assertNull(viewModel.preview.value)
-        }
-    }
-
-    @Test
-    fun cancelShape_discardsPreview() {
-        val viewModel = DrawingViewModel()
-        viewModel.setTool(DrawingTool.RECTANGLE)
-        viewModel.startStroke(Offset.Zero)
-        viewModel.dragStroke(Offset(10f, 10f))
-        viewModel.cancelStroke()
-        viewModel.finishStroke()
-
-        assertTrue(viewModel.lines.value.isEmpty())
-        assertNull(viewModel.preview.value)
-    }
-
-    @Test
-    fun eraser_keepsEarlierStrokesAndSelectedColor() {
-        val viewModel = DrawingViewModel()
-        viewModel.setColor(Color.Red)
-        viewModel.startStroke(Offset.Zero)
-        viewModel.dragStroke(Offset(10f, 10f))
-        viewModel.finishStroke()
-        val original = viewModel.lines.value.toList()
-
-        viewModel.setTool(DrawingTool.ERASER)
-        viewModel.startStroke(Offset.Zero)
-        viewModel.dragStroke(Offset(5f, 5f))
-        viewModel.finishStroke()
-
-        assertEquals(original, viewModel.lines.value.take(original.size))
-        assertEquals(Color.White, viewModel.lines.value.last().color)
-        assertEquals(Color.Red, viewModel.selectedColor.value)
-    }
-
-    @Test
-    fun stroke_keepsSettingsFromStartOfDrag() {
+    fun changingPenSettings_keepsExistingSegments() {
         val viewModel = DrawingViewModel()
         viewModel.setTool(DrawingTool.BRUSH)
         viewModel.setColor(Color.Red)
-        viewModel.startStroke(Offset.Zero)
-        viewModel.setColor(Color.Blue)
-        viewModel.setTool(DrawingTool.PEN)
-        viewModel.dragStroke(Offset(10f, 10f))
-        viewModel.finishStroke()
+        viewModel.setBrushSize(12f)
+        viewModel.addLine(Offset.Zero, Offset(10f, 10f))
 
-        assertTrue(viewModel.lines.value.all { it.tool == DrawingTool.BRUSH && it.color == Color.Red })
+        viewModel.setTool(DrawingTool.PEN)
+        viewModel.setColor(Color.Blue)
+        viewModel.setBrushSize(6f)
+        viewModel.addLine(Offset(10f, 10f), Offset(20f, 20f))
+
+        val lines = viewModel.lines.value
+        assertEquals(2, lines.size)
+        assertEquals(DrawingTool.BRUSH, lines[0].tool)
+        assertEquals(Color.Red, lines[0].color)
+        assertEquals(12f, lines[0].strokeWidth.value, 0f)
+        assertEquals(DrawingTool.PEN, lines[1].tool)
+        assertEquals(Color.Blue, lines[1].color)
+        assertEquals(6f, lines[1].strokeWidth.value, 0f)
     }
 
     @Test
@@ -101,8 +57,8 @@ class DrawingViewModelTest {
     @Test
     fun setTool_updatesSelectedTool() {
         val viewModel = DrawingViewModel()
-        viewModel.setTool(DrawingTool.CIRCLE)
-        assertEquals(DrawingTool.CIRCLE, viewModel.selectedTool.value)
+        viewModel.setTool(DrawingTool.BRUSH)
+        assertEquals(DrawingTool.BRUSH, viewModel.selectedTool.value)
     }
 
     @Test

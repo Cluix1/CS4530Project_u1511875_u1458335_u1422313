@@ -51,20 +51,14 @@ fun DrawingToolbar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Tools", style = MaterialTheme.typography.labelLarge)
+            Text("Pen shape", style = MaterialTheme.typography.labelLarge)
             TextButton(onClick = onClear, enabled = canClear) {
                 Text("Clear")
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ToolButton("Pen", DrawingTool.PEN, selectedTool, onToolSelected)
-            ToolButton("Brush", DrawingTool.BRUSH, selectedTool, onToolSelected)
-            ToolButton("Eraser", DrawingTool.ERASER, selectedTool, onToolSelected)
-            ToolButton("Line", DrawingTool.LINE, selectedTool, onToolSelected)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ToolButton("Rectangle", DrawingTool.RECTANGLE, selectedTool, onToolSelected)
-            ToolButton("Circle", DrawingTool.CIRCLE, selectedTool, onToolSelected)
+            ToolButton("Circle", DrawingTool.PEN, selectedTool, onToolSelected)
+            ToolButton("Square", DrawingTool.BRUSH, selectedTool, onToolSelected)
         }
 
         Text("Color", style = MaterialTheme.typography.labelLarge)
