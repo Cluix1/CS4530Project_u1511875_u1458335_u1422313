@@ -64,7 +64,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 class SplashViewModel : ViewModel() {
     val visible = MutableStateFlow(true)
@@ -89,6 +91,31 @@ class MainViewModelFactory(private val repository: DrawingRepository) : ViewMode
 }
 
 class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving = _isSaving.asStateFlow()
+    private val _saveMessage = MutableStateFlow<String?>(null)
+    val saveMessage = _saveMessage.asStateFlow()
+
+    fun saveDrawing(bitmap: Bitmap, toGallery: Boolean) {
+        if (isSaving.value) return
+        _isSaving.value = true
+        _saveMessage.value = null
+        viewModelScope.launch {
+            try {
+                if (toGallery) repository.saveToGallery(bitmap)
+                else repository.add(Drawing(backing = bitmap))
+                _saveMessage.value = if (toGallery) "Saved to gallery" else "Saved to Photoshop"
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _saveMessage.value = "Could not save drawing. Please try again."
+            } finally {
+                _isSaving.value = false
+            }
+        }
+    }
+
+    fun clearSaveMessage() { _saveMessage.value = null }
 
     //Model (comes from the database through the repository)
     val drawingsReadOnly: StateFlow<List<Drawing>> = repository.allDrawings
@@ -161,7 +188,7 @@ fun AppNavHost(mainVM: MainViewModel, drawVM: DrawingViewModel, navController: N
             MainScreen(mainVM, navController)
         }
         composable("DrawRoute"){
-            DrawingScreen(drawVM, navController)
+            DrawingScreen(drawVM, navController, mainVM)
         }
     }
 }
