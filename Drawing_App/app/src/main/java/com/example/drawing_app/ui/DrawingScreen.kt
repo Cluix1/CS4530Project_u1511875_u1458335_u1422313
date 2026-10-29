@@ -19,12 +19,14 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.navigation.NavHost
+import androidx.navigation.NavHostController
 import com.example.drawing_app.DrawingTool
 import com.example.drawing_app.DrawingViewModel
 import com.example.drawing_app.Line
 
 @Composable
-fun DrawingScreen(drawingViewModel: DrawingViewModel) {
+fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController) {
     val selectedTool = drawingViewModel.selectedTool.collectAsState().value
     val selectedColor = drawingViewModel.selectedColor.collectAsState().value
     val brushSize = drawingViewModel.brushSize.collectAsState().value
