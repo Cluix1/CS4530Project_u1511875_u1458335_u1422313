@@ -3,16 +3,15 @@ package com.example.drawing_app
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -28,14 +26,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,10 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -55,17 +49,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHost
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.drawing_app.ui.DrawingScreen
-import com.example.drawing_app.ui.DrawingToolbar
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -74,18 +63,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 
-class SplashViewModel : ViewModel() {
-    val visible = MutableStateFlow(true)
-
-    suspend fun closeScreen() {
-        delay(3000)
-        visible.value = false
-    }
-}
-
 data class Drawing(
     val id: Int = 0,
-    val backing : Bitmap
+    val backing: Bitmap
 )
 
 class MainViewModelFactory(private val repository: DrawingRepository) : ViewModelProvider.Factory {
@@ -173,14 +153,9 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
 
     fun clearSaveMessage() { _saveMessage.value = null }
 
-    //Model (comes from the database through the repository)
+    // Drawings come from the repository.
     val drawingsReadOnly: StateFlow<List<Drawing>> = repository.allDrawings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // Methods to modify the Model
-    fun addDrawing(d: Drawing) {
-        viewModelScope.launch { repository.add(d) }
-    }
 
     fun removeDrawing(d: Drawing) {
         viewModelScope.launch {
@@ -193,32 +168,6 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
                 _saveMessage.value = "Could not delete drawing. Please try again."
             }
         }
-    }
-
-    // Test helper: fills the gallery with randomly generated bitmaps
-    fun addRandomDrawings(count: Int = 6) {
-        viewModelScope.launch {
-            repeat(count) {
-                val bitmap = withContext(Dispatchers.Default) { randomBitmap() }
-                repository.add(Drawing(backing = bitmap))
-            }
-        }
-    }
-
-    private fun randomBitmap(size: Int = 256): Bitmap {
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(bitmap)
-        canvas.drawColor(android.graphics.Color.WHITE)
-        val paint = android.graphics.Paint().apply { isAntiAlias = true }
-        repeat(Random.nextInt(5, 15)) {
-            paint.color = android.graphics.Color.rgb(Random.nextInt(256), Random.nextInt(256), Random.nextInt(256))
-            val x = Random.nextFloat() * size
-            val y = Random.nextFloat() * size
-            val r = Random.nextFloat() * size / 4 + 8
-            if (Random.nextBoolean()) canvas.drawCircle(x, y, r, paint)
-            else canvas.drawRect(x - r, y - r, x + r, y + r, paint)
-        }
-        return bitmap
     }
 
     fun selectDrawing(d: Drawing?) {
@@ -234,18 +183,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val splashViewModel: SplashViewModel = viewModel()
             val drawingViewModel: DrawingViewModel = viewModel()
             val mainViewModel: MainViewModel = viewModel(factory = MainViewModelFactory((application as DrawingApplication).repository))
             val nav = rememberNavController()
             AppNavHost(mainViewModel, drawingViewModel, nav)
-            DrawingApp(splashViewModel, drawingViewModel, mainViewModel, nav)
         }
     }
 }
 
 @Composable
-fun AppNavHost(mainVM: MainViewModel, drawVM: DrawingViewModel, navController: NavHostController, ) {
+fun AppNavHost(mainVM: MainViewModel, drawVM: DrawingViewModel, navController: NavHostController) {
     NavHost(navController = navController, startDestination = "SplashRoute") {
         composable("SplashRoute"){
             SplashScreen(navController)
@@ -257,16 +204,6 @@ fun AppNavHost(mainVM: MainViewModel, drawVM: DrawingViewModel, navController: N
             DrawingScreen(drawVM, navController, mainVM)
         }
     }
-}
-
-@Composable
-private fun DrawingApp(
-    splashViewModel: SplashViewModel,
-    drawingViewModel: DrawingViewModel,
-    mainViewModel: MainViewModel,
-    nav: NavHostController
-) {
-
 }
 
 @Composable
@@ -328,11 +265,12 @@ fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController, drawingView
                         Image(
                             bitmap = imageBitmap,
                             contentDescription = "Drawing ${index + 1}",
-                            contentScale = ContentScale.Crop,
+                            contentScale = ContentScale.Fit,
                             modifier = Modifier
                                 .testTag("drawing-${drawing.id}")
                                 .aspectRatio(1f)
                                 .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White)
                                 .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
                                 .clickable {
                                     mainViewModel.selectDrawing(drawing)
