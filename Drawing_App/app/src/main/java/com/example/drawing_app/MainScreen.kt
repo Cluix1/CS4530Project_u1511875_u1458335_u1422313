@@ -89,17 +89,9 @@ class DrawingRepository private constructor(private val context: Context, privat
     suspend fun remove(d: Drawing) = dao.delete(d)
 
     suspend fun importImage(uri: Uri): Bitmap = withContext(Dispatchers.IO) {
-        val resolver = context.contentResolver
-        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
-        if (options.outWidth <= 0 || options.outHeight <= 0) throw IOException("Could not read image")
-        // Keep large gallery photos from using too much memory.
-        options.inSampleSize = 1
-        while (options.outWidth / options.inSampleSize > 2048 || options.outHeight / options.inSampleSize > 2048) {
-            options.inSampleSize *= 2
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            BitmapFactory.decodeStream(input)
         }
-        options.inJustDecodeBounds = false
-        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
             ?: throw IOException("Could not read image")
     }
 

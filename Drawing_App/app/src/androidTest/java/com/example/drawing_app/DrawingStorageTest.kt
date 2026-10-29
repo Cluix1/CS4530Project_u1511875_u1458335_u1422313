@@ -127,15 +127,15 @@ class DrawingStorageTest {
     }
 
     @Test
-    fun importImage_reducesLargePhotos() = runBlocking {
+    fun importImage_keepsOriginalDimensions() = runBlocking {
         val repository = DrawingRepository.getRepository(context)
         val large = Bitmap.createBitmap(4096, 1024, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
         val uri = repository.prepareShare(large)
         large.recycle()
         try {
             val imported = repository.importImage(uri)
-            assertTrue(imported.width <= 2048 && imported.height <= 2048)
-            assertEquals(4, imported.width / imported.height)
+            assertEquals(4096, imported.width)
+            assertEquals(1024, imported.height)
             assertEquals(Color.RED, imported.getPixel(0, 0))
         } finally {
             context.contentResolver.delete(uri, null, null)

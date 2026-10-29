@@ -2,7 +2,6 @@ package com.example.drawing_app.ui
 
 import android.Manifest
 import android.content.Intent
-import android.content.ClipData
 import android.graphics.Bitmap
 import android.content.pm.PackageManager
 import android.os.Build
@@ -52,13 +51,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.navigation.NavHost
 import androidx.navigation.NavHostController
 import com.example.drawing_app.DrawingTool
 import com.example.drawing_app.DrawingViewModel
 import com.example.drawing_app.Line
 import com.example.drawing_app.Drawing
-import kotlin.math.roundToInt
 
 @Composable
 fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, mainViewModel: MainViewModel) {
@@ -158,7 +155,6 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "image/png"
                             putExtra(Intent.EXTRA_STREAM, uri)
-                            clipData = ClipData.newRawUri("Drawing", uri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
                         context.startActivity(Intent.createChooser(intent, "Share drawing"))
@@ -190,13 +186,15 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
                     }
                 }
         ) {
-            backgroundImage?.let {
-                val scale = minOf(size.width / it.width, size.height / it.height)
-                val width = (it.width * scale).roundToInt().coerceAtLeast(1)
-                val height = (it.height * scale).roundToInt().coerceAtLeast(1)
+            backgroundImage?.let { image ->
+                val scale = minOf(size.width / image.width, size.height / image.height)
+                var width = (image.width * scale).toInt()
+                var height = (image.height * scale).toInt()
+                if (width < 1) width = 1
+                if (height < 1) height = 1
                 drawImage(
-                    it,
-                    dstOffset = IntOffset(((size.width - width) / 2).roundToInt(), ((size.height - height) / 2).roundToInt()),
+                    image,
+                    dstOffset = IntOffset(((size.width - width) / 2).toInt(), ((size.height - height) / 2).toInt()),
                     dstSize = IntSize(width, height)
                 )
             }
