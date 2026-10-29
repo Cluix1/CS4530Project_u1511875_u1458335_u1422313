@@ -94,8 +94,8 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
         }
     }
 
-    fun save(toGallery: Boolean) {
-        captureBitmap { mainViewModel.saveDrawing(it, toGallery) }
+    fun save(toPhotos: Boolean) {
+        captureBitmap { mainViewModel.saveDrawing(it, toPhotos) }
     }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -106,7 +106,7 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
 
     val galleryPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) save(true)
-        else Toast.makeText(context, "Gallery permission is needed to save", Toast.LENGTH_SHORT).show()
+        else Toast.makeText(context, "Storage permission is needed to save to photos", Toast.LENGTH_SHORT).show()
     }
 
     LaunchedEffect(saveMessage) {
@@ -135,7 +135,7 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
                     TextButton(onClick = {
                         showSaveOptions = false
                         save(false)
-                    }, enabled = !busy) { Text("Save to Photoshop") }
+                    }, enabled = !busy) { Text("Save to Gallery") }
                     TextButton(onClick = {
                         showSaveOptions = false
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
@@ -143,7 +143,7 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
                         ) {
                             galleryPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                         } else save(true)
-                    }, enabled = !busy) { Text("Save to Gallery") }
+                    }, enabled = !busy) { Text("Save to Photos") }
                 }
             }
             TextButton(onClick = { imagePicker.launch("image/*") }, enabled = !busy) {

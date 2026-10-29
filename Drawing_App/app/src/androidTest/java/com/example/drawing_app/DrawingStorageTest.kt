@@ -77,10 +77,10 @@ class DrawingStorageTest {
     }
 
     @Test
-    fun galleryExport_writesReadablePng() = runBlocking {
+    fun photosExport_writesReadablePng() = runBlocking {
         // Older Android versions request storage permission from the screen.
         assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-        val uri = DrawingRepository.getRepository(context).saveToGallery(bitmap())
+        val uri = DrawingRepository.getRepository(context).saveToPhotos(bitmap())
         try {
             val saved = context.contentResolver.openInputStream(uri).use { BitmapFactory.decodeStream(it) }!!
             assertEquals(20, saved.width)

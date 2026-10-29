@@ -147,7 +147,7 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
         }
     }
 
-    fun saveDrawing(bitmap: Bitmap, toGallery: Boolean) {
+    fun saveDrawing(bitmap: Bitmap, toPhotos: Boolean) {
         if (isSaving.value) return
         _isSaving.value = true
         _saveMessage.value = null
@@ -155,7 +155,7 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
         val session = editorSession
         viewModelScope.launch {
             try {
-                if (toGallery) repository.saveToGallery(bitmap)
+                if (toPhotos) repository.saveToPhotos(bitmap)
                 else {
                     val drawing = Drawing(id = drawingId ?: 0, backing = bitmap)
                     if (drawingId == null) {
@@ -163,7 +163,7 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
                         if (editorSession == session) selectedDrawingId = newId
                     } else repository.update(drawing)
                 }
-                _saveMessage.value = if (toGallery) "Saved to gallery" else "Saved to Photoshop"
+                _saveMessage.value = if (toPhotos) "Saved to photos" else "Saved to gallery"
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

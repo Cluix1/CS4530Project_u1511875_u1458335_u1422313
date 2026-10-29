@@ -97,7 +97,7 @@ class DrawingSaveScreenTest {
                 swipe(Offset(width * 0.25f, height * 0.5f), Offset(width * 0.75f, height * 0.5f))
             }
             compose.onNodeWithText("Save").performClick()
-            compose.onNodeWithText("Save to Photoshop").performClick()
+            compose.onNodeWithText("Save to Gallery").performClick()
             compose.waitUntil(10_000) {
                 runBlocking {
                     repository.allDrawings.first().first { it.id == firstId }.backing.let { saved ->
@@ -137,7 +137,7 @@ class DrawingSaveScreenTest {
                 swipe(Offset(width * 0.25f, height * 0.5f), Offset(width * 0.75f, height * 0.5f))
             }
             compose.onNodeWithText("Save").performClick()
-            compose.onNodeWithText("Save to Photoshop").performClick()
+            compose.onNodeWithText("Save to Gallery").performClick()
             compose.waitUntil(10_000) {
                 runBlocking { repository.allDrawings.first().any { it.id !in existingIds } }
             }

@@ -110,7 +110,7 @@ class DrawingRepository private constructor(private val context: Context, privat
         }
     }
 
-    suspend fun saveToGallery(bitmap: Bitmap) = withContext(Dispatchers.IO) {
+    suspend fun saveToPhotos(bitmap: Bitmap) = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "Drawing_${UUID.randomUUID()}.png")
