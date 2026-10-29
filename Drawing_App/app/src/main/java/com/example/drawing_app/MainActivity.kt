@@ -1,6 +1,7 @@
 package com.example.drawing_app
 
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -104,6 +105,47 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
     val isSaving = _isSaving.asStateFlow()
     private val _saveMessage = MutableStateFlow<String?>(null)
     val saveMessage = _saveMessage.asStateFlow()
+    private val _isImporting = MutableStateFlow(false)
+    val isImporting = _isImporting.asStateFlow()
+    private val _isSharing = MutableStateFlow(false)
+    val isSharing = _isSharing.asStateFlow()
+
+    fun importImage(uri: Uri, onImported: (Bitmap) -> Unit) {
+        if (_isImporting.value) return
+        _isImporting.value = true
+        val session = editorSession
+        viewModelScope.launch {
+            try {
+                val bitmap = repository.importImage(uri)
+                if (session == editorSession) {
+                    selectDrawing(null)
+                    onImported(bitmap)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _saveMessage.value = "Could not import image. Please choose another image."
+            } finally {
+                _isImporting.value = false
+            }
+        }
+    }
+
+    fun prepareShare(bitmap: Bitmap, onReady: (Uri) -> Unit) {
+        if (_isSharing.value) return
+        _isSharing.value = true
+        viewModelScope.launch {
+            try {
+                onReady(repository.prepareShare(bitmap))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _saveMessage.value = "Could not share drawing. Please try again."
+            } finally {
+                _isSharing.value = false
+            }
+        }
+    }
 
     fun saveDrawing(bitmap: Bitmap, toGallery: Boolean) {
         if (isSaving.value) return

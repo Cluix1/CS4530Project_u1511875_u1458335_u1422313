@@ -1,6 +1,10 @@
 package com.example.drawing_app
 
 import android.graphics.Color
+import android.app.Activity
+import android.app.Instrumentation
+import android.content.Intent
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -15,12 +19,63 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotNull
 import org.junit.Rule
 import org.junit.Test
 
 class DrawingSaveScreenTest {
     @get:Rule
     val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun importAndShare_useSelectedImageAndReadablePng() {
+        val repository = (compose.activity.application as DrawingApplication).repository
+        val source = android.graphics.Bitmap.createBitmap(60, 40, android.graphics.Bitmap.Config.ARGB_8888).apply {
+            eraseColor(Color.BLUE)
+        }
+        val uri = runBlocking { repository.prepareShare(source) }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        var shared: Intent? = null
+        // Return a selected image without opening another app during this test.
+        val monitor = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
+                return when (intent.action) {
+                    Intent.ACTION_GET_CONTENT -> Instrumentation.ActivityResult(Activity.RESULT_OK, Intent().setData(uri))
+                    Intent.ACTION_CHOOSER -> {
+                        shared = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+                        Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+                    }
+                    else -> null
+                }
+            }
+        }
+        instrumentation.addMonitor(monitor)
+        try {
+            compose.waitUntil(10_000) {
+                compose.onAllNodes(androidx.compose.ui.test.hasText("New Drawing")).fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText("New Drawing").performClick()
+            compose.onNodeWithText("Import").performClick()
+            compose.waitUntil(10_000) {
+                compose.onNodeWithTag("drawingCanvas").captureToImage().asAndroidBitmap().let {
+                    it.getPixel(it.width / 2, it.height / 2) == Color.BLUE
+                }
+            }
+            compose.onNodeWithText("Share").performClick()
+            compose.waitUntil(10_000) { shared != null }
+            assertEquals(Intent.ACTION_SEND, shared!!.action)
+            assertEquals("image/png", shared!!.type)
+            assertTrue(shared!!.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+            val sharedUri = shared!!.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+            assertNotNull(sharedUri)
+            val bitmap = runBlocking { repository.importImage(sharedUri!!) }
+            assertEquals(Color.BLUE, bitmap.getPixel(bitmap.width / 2, bitmap.height / 2))
+            compose.activity.contentResolver.delete(sharedUri!!, null, null)
+        } finally {
+            instrumentation.removeMonitor(monitor)
+            compose.activity.contentResolver.delete(uri, null, null)
+        }
+    }
 
     @Test
     fun gallery_opensUpdatesStartsFreshAndDeletesSelectedDrawing() {

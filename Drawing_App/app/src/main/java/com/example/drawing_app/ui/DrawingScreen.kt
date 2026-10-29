@@ -1,6 +1,9 @@
 package com.example.drawing_app.ui
 
 import android.Manifest
+import android.content.Intent
+import android.content.ClipData
+import android.graphics.Bitmap
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
@@ -8,6 +11,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +23,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.platform.LocalContext
@@ -51,6 +57,8 @@ import androidx.navigation.NavHostController
 import com.example.drawing_app.DrawingTool
 import com.example.drawing_app.DrawingViewModel
 import com.example.drawing_app.Line
+import com.example.drawing_app.Drawing
+import kotlin.math.roundToInt
 
 @Composable
 fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, mainViewModel: MainViewModel) {
@@ -61,21 +69,24 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
     val background by drawingViewModel.background.collectAsState()
     val backgroundImage = remember(background) { background?.asImageBitmap() }
     val isSaving by mainViewModel.isSaving.collectAsState()
+    val isImporting by mainViewModel.isImporting.collectAsState()
+    val isSharing by mainViewModel.isSharing.collectAsState()
     val saveMessage by mainViewModel.saveMessage.collectAsState()
     var showSaveOptions by remember { mutableStateOf(false) }
     var isCapturing by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val imageLayer = rememberGraphicsLayer()
     val scope = rememberCoroutineScope()
+    val busy = isSaving || isImporting || isSharing || isCapturing
 
-    fun save(toGallery: Boolean) {
-        if (isSaving || isCapturing) return
+    fun captureBitmap(onCaptured: (Bitmap) -> Unit) {
+        if (busy) return
         isCapturing = true
         scope.launch {
             try {
                 // Only the white drawing canvas is included in the bitmap.
                 val imageBitmap = imageLayer.toImageBitmap()
-                mainViewModel.saveDrawing(imageBitmap.asAndroidBitmap(), toGallery)
+                onCaptured(imageBitmap.asAndroidBitmap())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -83,6 +94,16 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
             } finally {
                 isCapturing = false
             }
+        }
+    }
+
+    fun save(toGallery: Boolean) {
+        captureBitmap { mainViewModel.saveDrawing(it, toGallery) }
+    }
+
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            mainViewModel.importImage(it) { bitmap -> drawingViewModel.openDrawing(Drawing(backing = bitmap)) }
         }
     }
 
@@ -109,21 +130,41 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
             modifier = Modifier.align(Alignment.Start).testTag("galleryButton")
         ) { Text("← Gallery") }
         Row {
-            TextButton(onClick = { showSaveOptions = !showSaveOptions }, enabled = !isSaving && !isCapturing) {
-                Text(if (isSaving || isCapturing) "Saving..." else "Save")
-            }
-            if (showSaveOptions) {
-                TextButton(onClick = { save(false) }, enabled = !isSaving && !isCapturing) {
-                    Text("Save to Photoshop")
+            Box {
+                TextButton(onClick = { showSaveOptions = !showSaveOptions }, enabled = !busy) {
+                    Text(if (isSaving || isCapturing) "Saving..." else "Save")
                 }
-                TextButton(onClick = {
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        galleryPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    } else save(true)
-                }, enabled = !isSaving && !isCapturing) { Text("Save to Gallery") }
+                DropdownMenu(expanded = showSaveOptions, onDismissRequest = { showSaveOptions = false }) {
+                    TextButton(onClick = {
+                        showSaveOptions = false
+                        save(false)
+                    }, enabled = !busy) { Text("Save to Photoshop") }
+                    TextButton(onClick = {
+                        showSaveOptions = false
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            galleryPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        } else save(true)
+                    }, enabled = !busy) { Text("Save to Gallery") }
+                }
             }
+            TextButton(onClick = { imagePicker.launch("image/*") }, enabled = !busy) {
+                Text(if (isImporting) "Importing..." else "Import")
+            }
+            TextButton(onClick = {
+                captureBitmap { bitmap ->
+                    mainViewModel.prepareShare(bitmap) { uri ->
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "image/png"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            clipData = ClipData.newRawUri("Drawing", uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Share drawing"))
+                    }
+                }
+            }, enabled = !busy) { Text(if (isSharing) "Sharing..." else "Share") }
         }
         DrawingToolbar(
             selectedTool = selectedTool,
@@ -150,7 +191,14 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
                 }
         ) {
             backgroundImage?.let {
-                drawImage(it, dstSize = IntSize(size.width.toInt(), size.height.toInt()))
+                val scale = minOf(size.width / it.width, size.height / it.height)
+                val width = (it.width * scale).roundToInt().coerceAtLeast(1)
+                val height = (it.height * scale).roundToInt().coerceAtLeast(1)
+                drawImage(
+                    it,
+                    dstOffset = IntOffset(((size.width - width) / 2).roundToInt(), ((size.height - height) / 2).roundToInt()),
+                    dstSize = IntSize(width, height)
+                )
             }
             lines.forEach { drawSegment(it) }
         }

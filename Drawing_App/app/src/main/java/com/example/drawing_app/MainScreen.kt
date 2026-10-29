@@ -7,6 +7,9 @@ import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.net.Uri
+import androidx.core.content.FileProvider
+import java.io.File
 import java.io.IOException
 import java.util.UUID
 import androidx.room3.ColumnTypeConverter
@@ -84,6 +87,36 @@ class DrawingRepository private constructor(private val context: Context, privat
     suspend fun add(d: Drawing) = dao.insert(d)
     suspend fun update(d: Drawing) = dao.update(d)
     suspend fun remove(d: Drawing) = dao.delete(d)
+
+    suspend fun importImage(uri: Uri): Bitmap = withContext(Dispatchers.IO) {
+        val resolver = context.contentResolver
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+        if (options.outWidth <= 0 || options.outHeight <= 0) throw IOException("Could not read image")
+        // Keep large gallery photos from using too much memory.
+        options.inSampleSize = 1
+        while (options.outWidth / options.inSampleSize > 2048 || options.outHeight / options.inSampleSize > 2048) {
+            options.inSampleSize *= 2
+        }
+        options.inJustDecodeBounds = false
+        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+            ?: throw IOException("Could not read image")
+    }
+
+    suspend fun prepareShare(bitmap: Bitmap): Uri = withContext(Dispatchers.IO) {
+        val directory = File(context.cacheDir, "shared_drawings")
+        if (!directory.exists() && !directory.mkdirs()) throw IOException("Could not create share folder")
+        val file = File(directory, "Drawing_${UUID.randomUUID()}.png")
+        try {
+            file.outputStream().use {
+                if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) throw IOException("Could not share image")
+            }
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        } catch (e: Exception) {
+            file.delete()
+            throw e
+        }
+    }
 
     suspend fun saveToGallery(bitmap: Bitmap) = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver

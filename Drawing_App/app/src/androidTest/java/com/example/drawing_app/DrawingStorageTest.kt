@@ -16,6 +16,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.UUID
+import java.io.IOException
 
 @RunWith(AndroidJUnit4::class)
 class DrawingStorageTest {
@@ -85,6 +86,57 @@ class DrawingStorageTest {
             assertEquals(20, saved.width)
             assertEquals(30, saved.height)
             assertEquals(Color.BLUE, saved.getPixel(10, 15))
+        } finally {
+            context.contentResolver.delete(uri, null, null)
+        }
+    }
+
+    @Test
+    fun sharedImage_hasContentUriAndCanBeImportedAgain() = runBlocking {
+        val repository = DrawingRepository.getRepository(context)
+        val uri = repository.prepareShare(bitmap())
+        try {
+            assertEquals("content", uri.scheme)
+            assertEquals("${context.packageName}.fileprovider", uri.authority)
+            assertEquals("image/png", context.contentResolver.getType(uri))
+            val imported = repository.importImage(uri)
+            assertEquals(20, imported.width)
+            assertEquals(30, imported.height)
+            assertEquals(Color.RED, imported.getPixel(0, 0))
+            assertEquals(Color.BLUE, imported.getPixel(10, 15))
+        } finally {
+            context.contentResolver.delete(uri, null, null)
+        }
+    }
+
+    @Test
+    fun importImage_rejectsInvalidImage() = runBlocking {
+        val uri = DrawingRepository.getRepository(context).prepareShare(bitmap())
+        try {
+            context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(byteArrayOf(1, 2, 3)) }
+            var rejected = false
+            try {
+                DrawingRepository.getRepository(context).importImage(uri)
+            } catch (e: IOException) {
+                rejected = true
+            }
+            assertTrue(rejected)
+        } finally {
+            context.contentResolver.delete(uri, null, null)
+        }
+    }
+
+    @Test
+    fun importImage_reducesLargePhotos() = runBlocking {
+        val repository = DrawingRepository.getRepository(context)
+        val large = Bitmap.createBitmap(4096, 1024, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
+        val uri = repository.prepareShare(large)
+        large.recycle()
+        try {
+            val imported = repository.importImage(uri)
+            assertTrue(imported.width <= 2048 && imported.height <= 2048)
+            assertEquals(4, imported.width / imported.height)
+            assertEquals(Color.RED, imported.getPixel(0, 0))
         } finally {
             context.contentResolver.delete(uri, null, null)
         }
