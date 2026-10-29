@@ -60,8 +60,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.room3.Entity
-import androidx.room3.PrimaryKey
 import com.example.drawing_app.ui.DrawingScreen
 import com.example.drawing_app.ui.DrawingToolbar
 import kotlinx.coroutines.Dispatchers
@@ -85,9 +83,8 @@ class SplashViewModel : ViewModel() {
     }
 }
 
-@Entity(tableName = "drawings")
 data class Drawing(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val id: Int = 0,
     val backing : Bitmap
 )
 

@@ -12,9 +12,6 @@ import androidx.core.content.FileProvider
 import java.io.File
 import java.io.IOException
 import java.util.UUID
-import androidx.room3.ColumnTypeConverter
-import androidx.room3.ColumnTypeConverters
-import java.io.ByteArrayOutputStream
 import androidx.room3.Delete
 import androidx.room3.Insert
 import androidx.room3.Query
@@ -23,9 +20,9 @@ import androidx.room3.Room
 import androidx.room3.Update
 import androidx.room3.Dao
 import androidx.room3.Database
-import androidx.room3.Entity
-import androidx.room3.PrimaryKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -33,35 +30,24 @@ import kotlinx.coroutines.withContext
 // actual db operations
 @Dao
 interface DrawingDao {
-    @Query("SELECT * FROM drawings")
-    fun getAll(): Flow<List<Drawing>>
+    @Query("SELECT * FROM drawings ORDER BY id DESC")
+    fun getAll(): Flow<List<DrawingRecord>>
+
+    @Query("SELECT * FROM drawings WHERE id = :id")
+    suspend fun getById(id: Int): DrawingRecord?
 
     @Insert
-    suspend fun insert(d: Drawing): Long
+    suspend fun insert(d: DrawingRecord): Long
 
     @Update
-    suspend fun update(d: Drawing)
+    suspend fun update(d: DrawingRecord): Int
 
     @Delete
-    suspend fun delete(d: Drawing)
-}
-
-// Room can't store a Bitmap directly, so save it as PNG bytes
-class BitmapConverter {
-    @ColumnTypeConverter
-    fun fromBitmap(bitmap: Bitmap): ByteArray {
-        val out = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-        return out.toByteArray()
-    }
-
-    @ColumnTypeConverter
-    fun toBitmap(bytes: ByteArray): Bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    suspend fun delete(d: DrawingRecord)
 }
 
 // Singleton
-@Database(entities = [Drawing::class], version = 1)
-@ColumnTypeConverters(BitmapConverter::class)
+@Database(entities = [DrawingRecord::class], version = 2, exportSchema = false)
 abstract class DrawingDatabase : RoomDatabase() {
     abstract fun drawingDAO(): DrawingDao
 
@@ -75,18 +61,65 @@ abstract class DrawingDatabase : RoomDatabase() {
                     context.applicationContext,
                     DrawingDatabase::class.java,
                     "drawing_database"
-                ).build().also { INSTANCE = it }
+                ).addMigrations(DrawingMigration(context)).build().also { INSTANCE = it }
             }
         }
     }
 }
 
 class DrawingRepository private constructor(private val context: Context, private val dao: DrawingDao) {
-    val allDrawings: Flow<List<Drawing>> = dao.getAll()
+    private val directory = File(context.filesDir, "drawings")
 
-    suspend fun add(d: Drawing) = dao.insert(d)
-    suspend fun update(d: Drawing) = dao.update(d)
-    suspend fun remove(d: Drawing) = dao.delete(d)
+    val allDrawings: Flow<List<Drawing>> = dao.getAll().map { records ->
+        records.mapNotNull { record ->
+            val bitmap = BitmapFactory.decodeFile(File(directory, record.fileName).path)
+            if (bitmap == null) null else Drawing(record.id, bitmap)
+        }
+    }.flowOn(Dispatchers.IO)
+
+    private fun saveImage(bitmap: Bitmap): File {
+        if (!directory.exists() && !directory.mkdirs()) throw IOException("Could not create drawings folder")
+        val file = File(directory, "Drawing_${UUID.randomUUID()}.png")
+        try {
+            file.outputStream().use { output ->
+                if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) throw IOException("Could not save image")
+            }
+        } catch (e: Exception) {
+            file.delete()
+            throw e
+        }
+        return file
+    }
+
+    suspend fun add(d: Drawing): Long = withContext(Dispatchers.IO) {
+        val file = saveImage(d.backing)
+        try {
+            dao.insert(DrawingRecord(id = d.id, fileName = file.name))
+        } catch (e: Exception) {
+            file.delete()
+            throw e
+        }
+    }
+
+    suspend fun update(d: Drawing) = withContext(Dispatchers.IO) {
+        val previous = dao.getById(d.id) ?: throw IOException("Drawing no longer exists")
+        val file = saveImage(d.backing)
+        try {
+            if (dao.update(DrawingRecord(d.id, file.name)) == 0) throw IOException("Drawing no longer exists")
+        } catch (e: Exception) {
+            file.delete()
+            throw e
+        }
+        File(directory, previous.fileName).delete()
+        Unit
+    }
+
+    suspend fun remove(d: Drawing) = withContext(Dispatchers.IO) {
+        val record = dao.getById(d.id) ?: return@withContext
+        dao.delete(record)
+        File(directory, record.fileName).delete()
+        Unit
+    }
 
     suspend fun importImage(uri: Uri): Bitmap = withContext(Dispatchers.IO) {
         context.contentResolver.openInputStream(uri)?.use { input ->
