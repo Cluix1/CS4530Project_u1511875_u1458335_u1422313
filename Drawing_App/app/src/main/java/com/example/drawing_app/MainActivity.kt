@@ -282,7 +282,9 @@ fun SplashScreen(nav: NavHostController){
     }
     LaunchedEffect(Unit) {
         delay(3000)
-        nav.navigate("MainRoute")
+        nav.navigate("MainRoute") {
+            popUpTo("SplashRoute") { inclusive = true }
+        }
     }
 }
 
@@ -311,10 +313,6 @@ fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController, drawingView
                 },
                 modifier = Modifier.padding(16.dp)
             ) { Text("New Drawing") }
-            Button(
-                onClick = { mainViewModel.addRandomDrawings() },
-                modifier = Modifier.padding(16.dp)
-            ) { Text("Add Test Drawings") }
         }
 
         if (drawings.isEmpty()) {

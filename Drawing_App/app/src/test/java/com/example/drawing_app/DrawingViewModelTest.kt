@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 // Tests pen settings, clearing, and keeping existing strokes unchanged.
-// Drawing, buttons, splash, rotation, and layouts still need manual testing.
+// Screen behavior is also checked by the instrumented tests.
 class DrawingViewModelTest {
     @Test
     fun newDrawing_removesOldStrokesAndKeepsSettings() {
@@ -90,5 +90,21 @@ class DrawingViewModelTest {
         val viewModel = DrawingViewModel()
         viewModel.setBrushSize(100f)
         assertEquals(DrawingViewModel.MAX_BRUSH_SIZE, viewModel.brushSize.value)
+    }
+
+    @Test
+    fun setBrushSize_limitsNegativeValue() {
+        val viewModel = DrawingViewModel()
+        viewModel.setBrushSize(-10f)
+        viewModel.addLine(Offset.Zero, Offset(5f, 5f))
+        assertEquals(DrawingViewModel.MIN_BRUSH_SIZE, viewModel.lines.value.first().strokeWidth.value, 0f)
+    }
+
+    @Test
+    fun setBrushSize_keepsValidValue() {
+        val viewModel = DrawingViewModel()
+        viewModel.setBrushSize(18.5f)
+        viewModel.addLine(Offset.Zero, Offset(5f, 5f))
+        assertEquals(18.5f, viewModel.lines.value.first().strokeWidth.value, 0f)
     }
 }

@@ -117,16 +117,11 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
     }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
-        TextButton(
-            onClick = {
-                nav.navigate("MainRoute") {
-                    popUpTo("MainRoute") { inclusive = true }
-                    launchSingleTop = true
-                }
-            },
-            modifier = Modifier.align(Alignment.Start).testTag("galleryButton")
-        ) { Text("← Gallery") }
-        Row {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly) {
+            TextButton(
+                onClick = { nav.popBackStack() },
+                modifier = Modifier.testTag("galleryButton")
+            ) { Text("Gallery") }
             Box {
                 TextButton(onClick = { showSaveOptions = !showSaveOptions }, enabled = !busy) {
                     Text(if (isSaving || isCapturing) "Saving..." else "Save")
