@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
@@ -33,6 +35,15 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController) {
     val lines = drawingViewModel.lines.collectAsState().value
 
     Column(Modifier.fillMaxSize().safeDrawingPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
+        TextButton(
+            onClick = {
+                nav.navigate("MainRoute") {
+                    popUpTo("MainRoute") { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
+            modifier = Modifier.align(Alignment.Start)
+        ) { Text("← Gallery") }
         DrawingToolbar(
             selectedTool = selectedTool,
             selectedColor = selectedColor,

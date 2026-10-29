@@ -15,6 +15,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -54,7 +56,10 @@ import androidx.room3.Entity
 import androidx.room3.PrimaryKey
 import com.example.drawing_app.ui.DrawingScreen
 import com.example.drawing_app.ui.DrawingToolbar
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -96,6 +101,32 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
 
     fun removeDrawing(d: Drawing) {
         viewModelScope.launch { repository.remove(d) }
+    }
+
+    // Test helper: fills the gallery with randomly generated bitmaps
+    fun addRandomDrawings(count: Int = 6) {
+        viewModelScope.launch {
+            repeat(count) {
+                val bitmap = withContext(Dispatchers.Default) { randomBitmap() }
+                repository.add(Drawing(backing = bitmap))
+            }
+        }
+    }
+
+    private fun randomBitmap(size: Int = 256): Bitmap {
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        canvas.drawColor(android.graphics.Color.WHITE)
+        val paint = android.graphics.Paint().apply { isAntiAlias = true }
+        repeat(Random.nextInt(5, 15)) {
+            paint.color = android.graphics.Color.rgb(Random.nextInt(256), Random.nextInt(256), Random.nextInt(256))
+            val x = Random.nextFloat() * size
+            val y = Random.nextFloat() * size
+            val r = Random.nextFloat() * size / 4 + 8
+            if (Random.nextBoolean()) canvas.drawCircle(x, y, r, paint)
+            else canvas.drawRect(x - r, y - r, x + r, y + r, paint)
+        }
+        return bitmap
     }
 
     fun selectDrawing(d: Drawing){
@@ -167,35 +198,41 @@ fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController) {
         Modifier.fillMaxSize().safeDrawingPadding(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Button(
-            onClick = { nav.navigate("DrawRoute") },   // your drawing screen route
-            modifier = Modifier.padding(16.dp)
-        ) { Text("New Drawing") }
+        Row {
+            Button(
+                onClick = { nav.navigate("DrawRoute") },
+                modifier = Modifier.padding(16.dp)
+            ) { Text("New Drawing") }
+            Button(
+                onClick = { mainViewModel.addRandomDrawings() },
+                modifier = Modifier.padding(16.dp)
+            ) { Text("Add Test Drawings") }
+        }
 
-//        if (drawings.isEmpty()) {
-//            Text("No drawings yet", Modifier.padding(32.dp))
-//        } else {
-//            LazyVerticalGrid(
-//                columns = GridCells.Adaptive(minSize = 120.dp),
-//                contentPadding = PaddingValues(8.dp),
-//                horizontalArrangement = Arrangement.spacedBy(8.dp),
-//                verticalArrangement = Arrangement.spacedBy(8.dp),
-//                modifier = Modifier.fillMaxSize()
-//            ) {
-//                itemsIndexed(drawings) { index, bitmap ->
-//                    val imageBitmap = remember(bitmap) { bitmap.asImageBitmap() }
-//                    Image(
-//                        bitmap = imageBitmap,
-//                        contentDescription = "Drawing ${index + 1}",
-//                        contentScale = ContentScale.Crop,
-//                        modifier = Modifier
-//                            .aspectRatio(1f)
-//                            .clip(RoundedCornerShape(8.dp))
-//                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
-//                            .clickable { nav.navigate(DrawRoute(index)) } // open existing drawing
-//                    )
-//                }
-//            }
-//        }
+        if (drawings.isEmpty()) {
+            Text("No drawings yet", Modifier.padding(32.dp))
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 120.dp),
+                contentPadding = PaddingValues(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                itemsIndexed(drawings, key = { _, d -> d.id }) { index, drawing ->
+                    val imageBitmap = remember(drawing) { drawing.backing.asImageBitmap() }
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = "Drawing ${index + 1}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                            .clickable { nav.navigate("DrawRoute") } // TODO: open this drawing
+                    )
+                }
+            }
+        }
     }
 }
