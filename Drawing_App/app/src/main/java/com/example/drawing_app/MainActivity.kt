@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -28,6 +29,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -91,6 +98,8 @@ class MainViewModelFactory(private val repository: DrawingRepository) : ViewMode
 }
 
 class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
+    private var selectedDrawingId: Int? = null
+    private var editorSession = 0
     private val _isSaving = MutableStateFlow(false)
     val isSaving = _isSaving.asStateFlow()
     private val _saveMessage = MutableStateFlow<String?>(null)
@@ -100,10 +109,18 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
         if (isSaving.value) return
         _isSaving.value = true
         _saveMessage.value = null
+        val drawingId = selectedDrawingId
+        val session = editorSession
         viewModelScope.launch {
             try {
                 if (toGallery) repository.saveToGallery(bitmap)
-                else repository.add(Drawing(backing = bitmap))
+                else {
+                    val drawing = Drawing(id = drawingId ?: 0, backing = bitmap)
+                    if (drawingId == null) {
+                        val newId = repository.add(drawing).toInt()
+                        if (editorSession == session) selectedDrawingId = newId
+                    } else repository.update(drawing)
+                }
                 _saveMessage.value = if (toGallery) "Saved to gallery" else "Saved to Photoshop"
             } catch (e: CancellationException) {
                 throw e
@@ -127,7 +144,16 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
     }
 
     fun removeDrawing(d: Drawing) {
-        viewModelScope.launch { repository.remove(d) }
+        viewModelScope.launch {
+            try {
+                repository.remove(d)
+                if (selectedDrawingId == d.id) selectDrawing(null)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _saveMessage.value = "Could not delete drawing. Please try again."
+            }
+        }
     }
 
     // Test helper: fills the gallery with randomly generated bitmaps
@@ -156,8 +182,9 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
         return bitmap
     }
 
-    fun selectDrawing(d: Drawing){
-
+    fun selectDrawing(d: Drawing?) {
+        selectedDrawingId = d?.id
+        editorSession++
     }
 
 }
@@ -185,7 +212,7 @@ fun AppNavHost(mainVM: MainViewModel, drawVM: DrawingViewModel, navController: N
             SplashScreen(navController)
         }
         composable("MainRoute") {
-            MainScreen(mainVM, navController)
+            MainScreen(mainVM, navController, drawVM)
         }
         composable("DrawRoute"){
             DrawingScreen(drawVM, navController, mainVM)
@@ -218,8 +245,16 @@ fun SplashScreen(nav: NavHostController){
 }
 
 @Composable
-fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController) {
+fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController, drawingViewModel: DrawingViewModel) {
     val drawings by mainViewModel.drawingsReadOnly.collectAsState()
+    val message by mainViewModel.saveMessage.collectAsState()
+    val context = LocalContext.current
+    LaunchedEffect(message) {
+        message?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            mainViewModel.clearSaveMessage()
+        }
+    }
 
     Column(
         Modifier.fillMaxSize().safeDrawingPadding(),
@@ -227,7 +262,11 @@ fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController) {
     ) {
         Row {
             Button(
-                onClick = { nav.navigate("DrawRoute") },
+                onClick = {
+                    mainViewModel.selectDrawing(null)
+                    drawingViewModel.newDrawing()
+                    nav.navigate("DrawRoute")
+                },
                 modifier = Modifier.padding(16.dp)
             ) { Text("New Drawing") }
             Button(
@@ -248,16 +287,31 @@ fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController) {
             ) {
                 itemsIndexed(drawings, key = { _, d -> d.id }) { index, drawing ->
                     val imageBitmap = remember(drawing) { drawing.backing.asImageBitmap() }
-                    Image(
-                        bitmap = imageBitmap,
-                        contentDescription = "Drawing ${index + 1}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
-                            .clickable { nav.navigate("DrawRoute") } // TODO: open this drawing
-                    )
+                    Box {
+                        Image(
+                            bitmap = imageBitmap,
+                            contentDescription = "Drawing ${index + 1}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .testTag("drawing-${drawing.id}")
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                                .clickable {
+                                    mainViewModel.selectDrawing(drawing)
+                                    drawingViewModel.openDrawing(drawing)
+                                    nav.navigate("DrawRoute")
+                                }
+                        )
+                        IconButton(
+                            onClick = { mainViewModel.removeDrawing(drawing) },
+                            modifier = Modifier.align(Alignment.TopEnd)
+                                .background(Color.White.copy(alpha = 0.9f), androidx.compose.foundation.shape.CircleShape)
+                                .semantics { contentDescription = "Delete drawing ${drawing.id}" }
+                        ) {
+                            Text("\u00d7", color = Color.Red, style = androidx.compose.material3.MaterialTheme.typography.headlineMedium)
+                        }
+                    }
                 }
             }
         }

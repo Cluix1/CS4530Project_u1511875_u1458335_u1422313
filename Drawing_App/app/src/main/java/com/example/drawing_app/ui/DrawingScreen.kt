@@ -16,6 +16,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.platform.LocalContext
@@ -56,6 +58,8 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
     val selectedColor = drawingViewModel.selectedColor.collectAsState().value
     val brushSize = drawingViewModel.brushSize.collectAsState().value
     val lines = drawingViewModel.lines.collectAsState().value
+    val background by drawingViewModel.background.collectAsState()
+    val backgroundImage = remember(background) { background?.asImageBitmap() }
     val isSaving by mainViewModel.isSaving.collectAsState()
     val saveMessage by mainViewModel.saveMessage.collectAsState()
     var showSaveOptions by remember { mutableStateOf(false) }
@@ -102,7 +106,7 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
                     launchSingleTop = true
                 }
             },
-            modifier = Modifier.align(Alignment.Start)
+            modifier = Modifier.align(Alignment.Start).testTag("galleryButton")
         ) { Text("← Gallery") }
         Row {
             TextButton(onClick = { showSaveOptions = !showSaveOptions }, enabled = !isSaving && !isCapturing) {
@@ -128,7 +132,7 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
             onToolSelected = drawingViewModel::setTool,
             onColorSelected = drawingViewModel::setColor,
             onBrushSizeChanged = drawingViewModel::setBrushSize,
-            canClear = lines.isNotEmpty(),
+            canClear = lines.isNotEmpty() || background != null,
             onClear = drawingViewModel::clear
         )
         HorizontalDivider()
@@ -145,6 +149,9 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
                     }
                 }
         ) {
+            backgroundImage?.let {
+                drawImage(it, dstSize = IntSize(size.width.toInt(), size.height.toInt()))
+            }
             lines.forEach { drawSegment(it) }
         }
     }

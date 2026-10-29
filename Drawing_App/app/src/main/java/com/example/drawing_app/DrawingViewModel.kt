@@ -1,5 +1,6 @@
 package com.example.drawing_app
 
+import android.graphics.Bitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
@@ -10,6 +11,16 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** Holds editor settings so they are retained when the device rotates. */
 class DrawingViewModel : ViewModel() {
+    private val _background = MutableStateFlow<Bitmap?>(null)
+    val background = _background.asStateFlow()
+
+    fun openDrawing(drawing: Drawing) {
+        _background.value = drawing.backing
+        _lines.value = emptyList()
+    }
+
+    fun newDrawing() { clear() }
+
     private val _lines = MutableStateFlow(listOf<Line>())
     val lines = _lines.asStateFlow()
 
@@ -34,6 +45,7 @@ class DrawingViewModel : ViewModel() {
 
     fun clear() {
         _lines.value = emptyList()
+        _background.value = null
     }
 
     companion object {

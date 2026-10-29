@@ -10,6 +10,23 @@ import org.junit.Test
 // Drawing, buttons, splash, rotation, and layouts still need manual testing.
 class DrawingViewModelTest {
     @Test
+    fun newDrawing_removesOldStrokesAndKeepsSettings() {
+        val viewModel = DrawingViewModel()
+        viewModel.setColor(Color.Blue)
+        viewModel.setBrushSize(16f)
+        viewModel.addLine(Offset.Zero, Offset(30f, 30f))
+
+        viewModel.newDrawing()
+
+        assertTrue(viewModel.lines.value.isEmpty())
+        assertEquals(null, viewModel.background.value)
+        assertEquals(Color.Blue, viewModel.selectedColor.value)
+        assertEquals(16f, viewModel.brushSize.value, 0f)
+        viewModel.addLine(Offset.Zero, Offset(5f, 5f))
+        assertEquals(1, viewModel.lines.value.size)
+    }
+
+    @Test
     fun changingPenSettings_keepsExistingSegments() {
         val viewModel = DrawingViewModel()
         viewModel.setTool(DrawingTool.BRUSH)

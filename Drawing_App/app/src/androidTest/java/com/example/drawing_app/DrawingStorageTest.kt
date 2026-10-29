@@ -58,6 +58,24 @@ class DrawingStorageTest {
     }
 
     @Test
+    fun deletedDrawing_staysDeletedAfterReopeningDatabase() = runBlocking {
+        val name = "drawing-delete-test-${UUID.randomUUID()}"
+        var database = Room.databaseBuilder(context, DrawingDatabase::class.java, name).build()
+        try {
+            val deletedId = database.drawingDAO().insert(Drawing(backing = bitmap())).toInt()
+            val keptId = database.drawingDAO().insert(Drawing(backing = bitmap())).toInt()
+            database.drawingDAO().delete(Drawing(id = deletedId, backing = bitmap()))
+            database.close()
+            database = Room.databaseBuilder(context, DrawingDatabase::class.java, name).build()
+
+            assertEquals(listOf(keptId), database.drawingDAO().getAll().first().map { it.id })
+        } finally {
+            database.close()
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
     fun galleryExport_writesReadablePng() = runBlocking {
         // Older Android versions request storage permission from the screen.
         assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)

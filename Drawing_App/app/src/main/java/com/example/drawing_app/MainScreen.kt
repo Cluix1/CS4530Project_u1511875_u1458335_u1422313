@@ -34,7 +34,7 @@ interface DrawingDao {
     fun getAll(): Flow<List<Drawing>>
 
     @Insert
-    suspend fun insert(d: Drawing)
+    suspend fun insert(d: Drawing): Long
 
     @Update
     suspend fun update(d: Drawing)
