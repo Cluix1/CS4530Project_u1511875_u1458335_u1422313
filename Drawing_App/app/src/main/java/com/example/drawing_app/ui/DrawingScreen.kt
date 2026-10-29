@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.LaunchedEffect
@@ -104,7 +105,7 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
         }
     }
 
-    val galleryPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    val photosPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) save(true)
         else Toast.makeText(context, "Storage permission is needed to save to photos", Toast.LENGTH_SHORT).show()
     }
@@ -117,7 +118,7 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
     }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             TextButton(
                 onClick = { nav.popBackStack() },
                 modifier = Modifier.testTag("galleryButton")
@@ -136,7 +137,7 @@ fun DrawingScreen(drawingViewModel: DrawingViewModel, nav: NavHostController, ma
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
                             ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
                         ) {
-                            galleryPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            photosPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                         } else save(true)
                     }, enabled = !busy) { Text("Save to Photos") }
                 }

@@ -19,8 +19,6 @@ class DrawingViewModel : ViewModel() {
         _lines.value = emptyList()
     }
 
-    fun newDrawing() { clear() }
-
     private val _lines = MutableStateFlow(listOf<Line>())
     val lines = _lines.asStateFlow()
 

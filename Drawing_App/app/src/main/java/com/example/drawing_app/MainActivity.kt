@@ -7,7 +7,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -25,9 +23,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
@@ -174,9 +174,7 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
         selectedDrawingId = d?.id
         editorSession++
     }
-
 }
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -194,26 +192,25 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavHost(mainVM: MainViewModel, drawVM: DrawingViewModel, navController: NavHostController) {
     NavHost(navController = navController, startDestination = "SplashRoute") {
-        composable("SplashRoute"){
+        composable("SplashRoute") {
             SplashScreen(navController)
         }
         composable("MainRoute") {
             MainScreen(mainVM, navController, drawVM)
         }
-        composable("DrawRoute"){
+        composable("DrawRoute") {
             DrawingScreen(drawVM, navController, mainVM)
         }
     }
 }
 
 @Composable
-fun SplashScreen(nav: NavHostController){
-    AnimatedVisibility(true, Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(id = R.drawable.crossed),
-            contentDescription = "Drawing app splash screen"
-        )
-    }
+fun SplashScreen(nav: NavHostController) {
+    Image(
+        painter = painterResource(id = R.drawable.crossed),
+        contentDescription = "Drawing app splash screen",
+        modifier = Modifier.fillMaxSize()
+    )
     LaunchedEffect(Unit) {
         delay(3000)
         nav.navigate("MainRoute") {
@@ -238,16 +235,14 @@ fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController, drawingView
         Modifier.fillMaxSize().safeDrawingPadding(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row {
-            Button(
-                onClick = {
-                    mainViewModel.selectDrawing(null)
-                    drawingViewModel.newDrawing()
-                    nav.navigate("DrawRoute")
-                },
-                modifier = Modifier.padding(16.dp)
-            ) { Text("New Drawing") }
-        }
+        Button(
+            onClick = {
+                mainViewModel.selectDrawing(null)
+                drawingViewModel.clear()
+                nav.navigate("DrawRoute")
+            },
+            modifier = Modifier.padding(16.dp)
+        ) { Text("New Drawing") }
 
         if (drawings.isEmpty()) {
             Text("No drawings yet", Modifier.padding(32.dp))
@@ -281,10 +276,10 @@ fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController, drawingView
                         IconButton(
                             onClick = { mainViewModel.removeDrawing(drawing) },
                             modifier = Modifier.align(Alignment.TopEnd)
-                                .background(Color.White.copy(alpha = 0.9f), androidx.compose.foundation.shape.CircleShape)
+                                .background(Color.White.copy(alpha = 0.9f), CircleShape)
                                 .semantics { contentDescription = "Delete drawing ${drawing.id}" }
                         ) {
-                            Text("\u00d7", color = Color.Red, style = androidx.compose.material3.MaterialTheme.typography.headlineMedium)
+                            Text("\u00d7", color = Color.Red, style = MaterialTheme.typography.headlineMedium)
                         }
                     }
                 }

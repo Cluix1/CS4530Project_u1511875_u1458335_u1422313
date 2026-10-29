@@ -11,7 +11,6 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import java.io.File
 import java.io.IOException
-import java.util.UUID
 import androidx.room3.Delete
 import androidx.room3.Insert
 import androidx.room3.Query
@@ -27,7 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 
-// actual db operations
+// Database operations
 @Dao
 interface DrawingDao {
     @Query("SELECT * FROM drawings ORDER BY id DESC")
@@ -71,15 +70,19 @@ class DrawingRepository private constructor(private val context: Context, privat
     private val directory = File(context.filesDir, "drawings")
 
     val allDrawings: Flow<List<Drawing>> = dao.getAll().map { records ->
-        records.mapNotNull { record ->
+        val drawings = mutableListOf<Drawing>()
+        for (record in records) {
             val bitmap = BitmapFactory.decodeFile(File(directory, record.fileName).path)
-            if (bitmap == null) null else Drawing(record.id, bitmap)
+            if (bitmap != null) {
+                drawings.add(Drawing(record.id, bitmap))
+            }
         }
+        drawings
     }.flowOn(Dispatchers.IO)
 
-    private fun saveImage(bitmap: Bitmap): File {
-        if (!directory.exists() && !directory.mkdirs()) throw IOException("Could not create drawings folder")
-        val file = File(directory, "Drawing_${UUID.randomUUID()}.png")
+    private fun saveImage(bitmap: Bitmap, directory: File): File {
+        directory.mkdirs()
+        val file = File.createTempFile("Drawing_", ".png", directory)
         try {
             file.outputStream().use { output ->
                 if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) throw IOException("Could not save image")
@@ -92,7 +95,7 @@ class DrawingRepository private constructor(private val context: Context, privat
     }
 
     suspend fun add(d: Drawing): Long = withContext(Dispatchers.IO) {
-        val file = saveImage(d.backing)
+        val file = saveImage(d.backing, directory)
         try {
             dao.insert(DrawingRecord(id = d.id, fileName = file.name))
         } catch (e: Exception) {
@@ -101,24 +104,28 @@ class DrawingRepository private constructor(private val context: Context, privat
         }
     }
 
-    suspend fun update(d: Drawing) = withContext(Dispatchers.IO) {
-        val previous = dao.getById(d.id) ?: throw IOException("Drawing no longer exists")
-        val file = saveImage(d.backing)
-        try {
-            if (dao.update(DrawingRecord(d.id, file.name)) == 0) throw IOException("Drawing no longer exists")
-        } catch (e: Exception) {
-            file.delete()
-            throw e
+    suspend fun update(d: Drawing) {
+        withContext(Dispatchers.IO) {
+            val previous = dao.getById(d.id) ?: throw IOException("Drawing no longer exists")
+            val file = saveImage(d.backing, directory)
+            try {
+                if (dao.update(DrawingRecord(d.id, file.name)) == 0) throw IOException("Drawing no longer exists")
+            } catch (e: Exception) {
+                file.delete()
+                throw e
+            }
+            File(directory, previous.fileName).delete()
         }
-        File(directory, previous.fileName).delete()
-        Unit
     }
 
-    suspend fun remove(d: Drawing) = withContext(Dispatchers.IO) {
-        val record = dao.getById(d.id) ?: return@withContext
-        dao.delete(record)
-        File(directory, record.fileName).delete()
-        Unit
+    suspend fun remove(d: Drawing) {
+        withContext(Dispatchers.IO) {
+            val record = dao.getById(d.id)
+            if (record != null) {
+                dao.delete(record)
+                File(directory, record.fileName).delete()
+            }
+        }
     }
 
     suspend fun importImage(uri: Uri): Bitmap = withContext(Dispatchers.IO) {
@@ -129,13 +136,8 @@ class DrawingRepository private constructor(private val context: Context, privat
     }
 
     suspend fun prepareShare(bitmap: Bitmap): Uri = withContext(Dispatchers.IO) {
-        val directory = File(context.cacheDir, "shared_drawings")
-        if (!directory.exists() && !directory.mkdirs()) throw IOException("Could not create share folder")
-        val file = File(directory, "Drawing_${UUID.randomUUID()}.png")
+        val file = saveImage(bitmap, File(context.cacheDir, "shared_drawings"))
         try {
-            file.outputStream().use {
-                if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) throw IOException("Could not share image")
-            }
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         } catch (e: Exception) {
             file.delete()
@@ -146,7 +148,7 @@ class DrawingRepository private constructor(private val context: Context, privat
     suspend fun saveToPhotos(bitmap: Bitmap) = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "Drawing_${UUID.randomUUID()}.png")
+            put(MediaStore.Images.Media.DISPLAY_NAME, "Drawing_${System.currentTimeMillis()}.png")
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/DrawingApp")
@@ -191,8 +193,6 @@ class DrawingRepository private constructor(private val context: Context, privat
 
 // Created once per app launch
 class DrawingApplication : Application() {
-    val database by lazy { DrawingDatabase.getDatabase(this) }
     val repository by lazy { DrawingRepository.getRepository(this) }
-
 }
 

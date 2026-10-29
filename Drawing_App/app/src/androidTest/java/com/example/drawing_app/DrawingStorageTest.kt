@@ -19,7 +19,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.UUID
 import java.io.IOException
 import java.io.File
 import java.io.ByteArrayOutputStream
@@ -36,14 +35,14 @@ class DrawingStorageTest {
     private fun testImage(): File {
         val directory = File(context.filesDir, "drawings")
         directory.mkdirs()
-        val file = File(directory, "test-${UUID.randomUUID()}.png")
+        val file = File.createTempFile("test-", ".png", directory)
         file.outputStream().use { bitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
         return file
     }
 
     @Test
     fun savedDrawing_survivesClosingAndReopeningDatabase() = runBlocking {
-        val name = "drawing-test-${UUID.randomUUID()}"
+        val name = "drawing-test-${System.currentTimeMillis()}"
         val imageFile = testImage()
         var database = Room.databaseBuilder(context, DrawingDatabase::class.java, name).build()
         try {
@@ -77,7 +76,7 @@ class DrawingStorageTest {
 
     @Test
     fun deletedDrawing_staysDeletedAfterReopeningDatabase() = runBlocking {
-        val name = "drawing-delete-test-${UUID.randomUUID()}"
+        val name = "drawing-delete-test-${System.currentTimeMillis()}"
         val imageFile = testImage()
         var database = Room.databaseBuilder(context, DrawingDatabase::class.java, name).build()
         try {
@@ -122,7 +121,7 @@ class DrawingStorageTest {
 
     @Test
     fun migration_keepsOldDrawingAndMovesPngToFile() = runBlocking {
-        val name = "drawing-migration-test-${UUID.randomUUID()}"
+        val name = "drawing-migration-test-${System.currentTimeMillis()}"
         val path = context.getDatabasePath(name)
         path.parentFile!!.mkdirs()
         SQLiteDatabase.openOrCreateDatabase(path, null).use { oldDatabase ->
