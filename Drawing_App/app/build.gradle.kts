@@ -1,8 +1,21 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
+
+// The Cloud Vision API key lives in local.properties (git-ignored) or the CLOUD_VISION_API_KEY
+// environment variable, so it is never committed to the repository.
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+fun secret(name: String): String =
+    (localProperties.getProperty(name)?.takeIf { it.isNotBlank() } ?: System.getenv(name) ?: "")
+        .replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace = "com.example.drawing_app"
@@ -18,6 +31,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "CLOUD_VISION_API_KEY", "\"${secret("CLOUD_VISION_API_KEY")}\"")
     }
 
     buildTypes {
@@ -33,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -49,7 +65,12 @@ dependencies {
     implementation(libs.androidx.room3.common)
     implementation(libs.androidx.room3.runtime)
     ksp(libs.androidx.room3.compiler)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
     testImplementation(libs.junit)
+    testImplementation(libs.ktor.client.mock)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

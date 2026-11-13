@@ -24,6 +24,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.example.drawing_app.vision.CloudVisionApi
+import com.example.drawing_app.vision.VisionRepository
+import com.example.drawing_app.vision.createVisionHttpClient
 
 
 // Database operations
@@ -74,11 +77,16 @@ class DrawingRepository private constructor(private val context: Context, privat
         for (record in records) {
             val bitmap = BitmapFactory.decodeFile(File(directory, record.fileName).path)
             if (bitmap != null) {
-                drawings.add(Drawing(record.id, bitmap))
+                drawings.add(Drawing(record.id, bitmap, record.fileName))
             }
         }
         drawings
     }.flowOn(Dispatchers.IO)
+
+    suspend fun getDrawing(id: Int): Drawing? = withContext(Dispatchers.IO) {
+        val record = dao.getById(id) ?: return@withContext null
+        BitmapFactory.decodeFile(File(directory, record.fileName).path)?.let { Drawing(record.id, it, record.fileName) }
+    }
 
     private fun saveImage(bitmap: Bitmap, directory: File): File {
         directory.mkdirs()
@@ -194,5 +202,8 @@ class DrawingRepository private constructor(private val context: Context, privat
 // Created once per app launch
 class DrawingApplication : Application() {
     val repository by lazy { DrawingRepository.getRepository(this) }
+    val visionRepository by lazy {
+        VisionRepository(CloudVisionApi(createVisionHttpClient(), BuildConfig.CLOUD_VISION_API_KEY))
+    }
 }
 

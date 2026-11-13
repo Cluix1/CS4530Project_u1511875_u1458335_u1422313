@@ -24,7 +24,17 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.example.drawing_app.ui.AnalysisScreen
+import com.example.drawing_app.vision.AnalysisViewModel
 import androidx.compose.material3.Text
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -65,7 +75,9 @@ import kotlinx.coroutines.CancellationException
 
 data class Drawing(
     val id: Int = 0,
-    val backing: Bitmap
+    val backing: Bitmap,
+    // Name of the saved PNG; empty until the drawing is saved.
+    val fileName: String = ""
 )
 
 class MainViewModelFactory(private val repository: DrawingRepository) : ViewModelProvider.Factory {
@@ -98,6 +110,25 @@ class MainViewModel(private val repository: DrawingRepository) : ViewModel() {
                     selectDrawing(null)
                     onImported(bitmap)
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _saveMessage.value = "Could not import image. Please choose another image."
+            } finally {
+                _isImporting.value = false
+            }
+        }
+    }
+
+    // Adds a picked image straight to the gallery, then reports its id so it can be analyzed.
+    fun importToGallery(uri: Uri, onImported: (Int) -> Unit) {
+        if (_isImporting.value) return
+        _isImporting.value = true
+        viewModelScope.launch {
+            try {
+                val bitmap = repository.importImage(uri)
+                val id = repository.add(Drawing(backing = bitmap)).toInt()
+                onImported(id)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -182,15 +213,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val drawingViewModel: DrawingViewModel = viewModel()
-            val mainViewModel: MainViewModel = viewModel(factory = MainViewModelFactory((application as DrawingApplication).repository))
+            val app = application as DrawingApplication
+            val mainViewModel: MainViewModel = viewModel(factory = MainViewModelFactory(app.repository))
             val nav = rememberNavController()
-            AppNavHost(mainViewModel, drawingViewModel, nav)
+            AppNavHost(mainViewModel, drawingViewModel, nav, app)
         }
     }
 }
 
 @Composable
-fun AppNavHost(mainVM: MainViewModel, drawVM: DrawingViewModel, navController: NavHostController) {
+fun AppNavHost(mainVM: MainViewModel, drawVM: DrawingViewModel, navController: NavHostController, app: DrawingApplication) {
     NavHost(navController = navController, startDestination = "SplashRoute") {
         composable("SplashRoute") {
             SplashScreen(navController)
@@ -200,6 +232,27 @@ fun AppNavHost(mainVM: MainViewModel, drawVM: DrawingViewModel, navController: N
         }
         composable("DrawRoute") {
             DrawingScreen(drawVM, navController, mainVM)
+        }
+        composable(
+            "AnalysisRoute/{drawingId}",
+            arguments = listOf(navArgument("drawingId") { type = NavType.IntType })
+        ) { entry ->
+            val drawingId = entry.arguments?.getInt("drawingId") ?: 0
+            // Scoped to this back stack entry, so each analysis screen gets its own ViewModel.
+            val analysisVM: AnalysisViewModel = viewModel(
+                factory = AnalysisViewModel.factory(drawingId, app.repository, app.visionRepository)
+            )
+            AnalysisScreen(
+                viewModel = analysisVM,
+                onBack = { navController.popBackStack() },
+                onEdit = { drawing ->
+                    mainVM.selectDrawing(drawing)
+                    drawVM.openDrawing(drawing)
+                    navController.navigate("DrawRoute") {
+                        popUpTo("MainRoute")
+                    }
+                }
+            )
         }
     }
 }
@@ -223,7 +276,11 @@ fun SplashScreen(nav: NavHostController) {
 fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController, drawingViewModel: DrawingViewModel) {
     val drawings by mainViewModel.drawingsReadOnly.collectAsState()
     val message by mainViewModel.saveMessage.collectAsState()
+    val isImporting by mainViewModel.isImporting.collectAsState()
     val context = LocalContext.current
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { mainViewModel.importToGallery(it) { id -> nav.navigate("AnalysisRoute/$id") } }
+    }
     LaunchedEffect(message) {
         message?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -235,14 +292,24 @@ fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController, drawingView
         Modifier.fillMaxSize().safeDrawingPadding(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Button(
-            onClick = {
-                mainViewModel.selectDrawing(null)
-                drawingViewModel.clear()
-                nav.navigate("DrawRoute")
-            },
-            modifier = Modifier.padding(16.dp)
-        ) { Text("New Drawing") }
+        Row(
+            Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(
+                onClick = {
+                    mainViewModel.selectDrawing(null)
+                    drawingViewModel.clear()
+                    nav.navigate("DrawRoute")
+                }
+            ) { Text("New Drawing") }
+            // Imported images are saved to the gallery and then analyzed by the Vision API.
+            OutlinedButton(
+                onClick = { imagePicker.launch("image/*") },
+                enabled = !isImporting,
+                modifier = Modifier.testTag("importToGalleryButton")
+            ) { Text(if (isImporting) "Importing..." else "Import Image") }
+        }
 
         if (drawings.isEmpty()) {
             Text("No drawings yet", Modifier.padding(32.dp))
@@ -281,6 +348,15 @@ fun MainScreen(mainViewModel: MainViewModel, nav: NavHostController, drawingView
                         ) {
                             Text("\u00d7", color = Color.Red, style = MaterialTheme.typography.headlineMedium)
                         }
+                        TextButton(
+                            onClick = { nav.navigate("AnalysisRoute/${drawing.id}") },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                                .padding(bottom = 6.dp)
+                                .height(30.dp)
+                                .background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(15.dp))
+                                .semantics { contentDescription = "Analyze drawing ${drawing.id}" }
+                        ) { Text("Analyze", style = MaterialTheme.typography.labelMedium) }
                     }
                 }
             }
