@@ -1,3 +1,12 @@
+/**
+ * AnalysisScreen.kt
+ *
+ * UI screen displaying Google Cloud Vision API analysis results, rendering detected objects,
+ * labels, faces, and text overlays on top of the drawing.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app.ui
 
 import androidx.compose.foundation.Canvas

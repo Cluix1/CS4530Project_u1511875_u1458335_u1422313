@@ -1,3 +1,12 @@
+/**
+ * DrawingScreen.kt
+ *
+ * UI composable for the drawing canvas interface, capturing user touch inputs to draw strokes
+ * and rendering background images and lines.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app.ui
 
 import android.Manifest

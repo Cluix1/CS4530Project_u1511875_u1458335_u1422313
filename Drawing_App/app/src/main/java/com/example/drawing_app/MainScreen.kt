@@ -1,3 +1,12 @@
+/**
+ * MainScreen.kt
+ *
+ * Defines core data models for drawings and strokes, Room database components
+ * (DrawingDatabase, DrawingDao), and the DrawingRepository for local storage operations.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app
 import android.app.Application
 import android.content.Context

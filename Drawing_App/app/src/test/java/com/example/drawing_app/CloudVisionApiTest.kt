@@ -1,3 +1,12 @@
+/**
+ * CloudVisionApiTest.kt
+ *
+ * Unit tests verifying Google Cloud Vision API request construction, response parsing,
+ * and error handling using Ktor's MockEngine.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app
 
 import com.example.drawing_app.vision.CloudVisionApi

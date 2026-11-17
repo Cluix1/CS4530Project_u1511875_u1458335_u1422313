@@ -1,3 +1,12 @@
+/**
+ * DrawingMigration.kt
+ *
+ * Migration handler for upgrading Room database schema from version 1 to 2,
+ * transitioning embedded drawing bitmaps to standalone disk files.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app
 
 import android.content.Context

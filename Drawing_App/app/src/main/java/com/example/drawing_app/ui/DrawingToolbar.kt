@@ -1,3 +1,12 @@
+/**
+ * DrawingToolbar.kt
+ *
+ * Composable toolbar providing user controls for selecting tools, stroke colors, brush sizes,
+ * clearing canvas, saving, importing images, and launching cloud analysis.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app.ui
 
 import androidx.compose.foundation.background

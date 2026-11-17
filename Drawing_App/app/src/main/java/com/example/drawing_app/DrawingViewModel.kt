@@ -1,3 +1,12 @@
+/**
+ * DrawingViewModel.kt
+ *
+ * ViewModel managing drawing canvas state, including active stroke lines, canvas background,
+ * selected drawing tools (pen/brush), stroke color, and stroke width.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app
 
 import android.graphics.Bitmap

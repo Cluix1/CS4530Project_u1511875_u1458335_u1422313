@@ -1,3 +1,11 @@
+/**
+ * Type.kt
+ *
+ * Typography configuration setting text styles and font specifications for the Compose UI.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app.ui.theme
 
 import androidx.compose.material3.Typography

@@ -1,3 +1,12 @@
+/**
+ * VisionRepository.kt
+ *
+ * Repository handling image scaling, encoding, API request execution, and result caching
+ * for Cloud Vision analysis.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app.vision
 
 import android.graphics.Bitmap

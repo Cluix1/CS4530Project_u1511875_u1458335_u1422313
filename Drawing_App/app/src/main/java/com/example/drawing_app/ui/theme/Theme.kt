@@ -1,3 +1,11 @@
+/**
+ * Theme.kt
+ *
+ * Material 3 theme configuration enabling dynamic light and dark color schemes across the app.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app.ui.theme
 
 import android.app.Activity

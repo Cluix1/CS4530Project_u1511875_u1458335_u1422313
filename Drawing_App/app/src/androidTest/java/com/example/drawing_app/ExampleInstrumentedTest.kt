@@ -1,3 +1,11 @@
+/**
+ * ExampleInstrumentedTest.kt
+ *
+ * Instrumented test verifying basic app package context execution on Android device/emulator.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app
 
 import androidx.test.platform.app.InstrumentationRegistry

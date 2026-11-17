@@ -1,3 +1,13 @@
+/**
+ * MainActivity.kt
+ *
+ * Main entry point and activity for the Drawing App. Manages screen navigation between
+ * the gallery grid, drawing editor, and image analysis views, as well as file export,
+ * import, and drawing persistence workflows.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app
 
 import android.graphics.Bitmap

@@ -1,3 +1,12 @@
+/**
+ * DrawingViewModelTest.kt
+ *
+ * Unit tests validating canvas state modifications, tool selections, color updates,
+ * and drawing clearing behavior in DrawingViewModel.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app
 
 import androidx.compose.ui.graphics.Color

@@ -1,3 +1,11 @@
+/**
+ * VisionModels.kt
+ *
+ * Data structures representing bounding boxes, detected objects, labels, and analysis result summaries.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app.vision
 
 /** A bounding box with edges given as fractions (0..1) of the image width and height. */

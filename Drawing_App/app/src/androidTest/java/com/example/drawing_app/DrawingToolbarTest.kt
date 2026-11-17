@@ -1,3 +1,11 @@
+/**
+ * DrawingToolbarTest.kt
+ *
+ * Instrumented Compose UI tests checking toolbar rendering, button clicks, and tool actions.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app
 
 import androidx.compose.runtime.collectAsState

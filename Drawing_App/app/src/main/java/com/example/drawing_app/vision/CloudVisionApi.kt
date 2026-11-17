@@ -1,3 +1,12 @@
+/**
+ * CloudVisionApi.kt
+ *
+ * Network client using Ktor to send image requests to the Google Cloud Vision REST API
+ * and parse analysis responses for objects, text, labels, and faces.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app.vision
 
 import io.ktor.client.HttpClient

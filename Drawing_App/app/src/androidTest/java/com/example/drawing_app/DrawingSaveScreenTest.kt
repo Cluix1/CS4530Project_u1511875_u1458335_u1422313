@@ -1,3 +1,11 @@
+/**
+ * DrawingSaveScreenTest.kt
+ *
+ * Instrumented UI tests verifying drawing save functionality and user interaction workflows.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app
 
 import android.graphics.Color

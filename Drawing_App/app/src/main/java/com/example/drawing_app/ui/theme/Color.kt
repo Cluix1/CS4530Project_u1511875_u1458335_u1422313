@@ -1,3 +1,11 @@
+/**
+ * Color.kt
+ *
+ * Color palette definitions used for styling the application's Compose theme.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app.ui.theme
 
 import androidx.compose.ui.graphics.Color

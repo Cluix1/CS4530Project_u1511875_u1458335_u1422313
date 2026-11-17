@@ -1,3 +1,12 @@
+/**
+ * AnalysisViewModel.kt
+ *
+ * ViewModel for managing the execution state of image analysis requests and holding
+ * vision analysis output state.
+ *
+ * Authors: Ryan Hoo (u1511875), Connor Kolodziej (u1458335), Luke Stansbury (u1422313)
+ * Course: CS 4530
+ */
 package com.example.drawing_app.vision
 
 import androidx.lifecycle.ViewModel
